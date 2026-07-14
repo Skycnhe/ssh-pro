@@ -9,6 +9,9 @@ on:
       - 'v*'
   workflow_dispatch: # Allows manual trigger from GH Actions tab
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK
