@@ -1,0 +1,98 @@
+name: Build & Release ServerBox SSH APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch: # Allows manual trigger from GH Actions tab
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Auto-generate Version Code and Version Name
+        id: prep_version
+        run: |
+          # Use the GitHub Actions run number as a unique, auto-incremented version code
+          VERSION_CODE=${{ github.run_number }}
+          
+          # Auto-generate a version name (e.g. 1.0.34) based on run number
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          
+          echo "Generated Version Code: $VERSION_CODE"
+          echo "Generated Version Name: $VERSION_NAME"
+          
+          # Inject these dynamically into app/build.gradle.kts using stream editing (sed)
+          sed -i "s/versionCode = 1/versionCode = $VERSION_CODE/g" app/build.gradle.kts
+          sed -i "s/versionName = \"1.0\"/versionName = \"$VERSION_NAME\"/g" app/build.gradle.kts
+          
+          # Pass outputs to subsequent steps
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+
+      - name: Build Debug APK (Universally Installable)
+        run: gradle :app:assembleDebug
+
+      - name: Build Release APK (Unsigned)
+        run: gradle :app:assembleRelease
+
+      # (Optional) If you configure signing secrets in your GitHub repository, you can sign the APK
+      # To do this, add your Keystore as a Base64 string in repository Secrets, then decode and sign.
+      # For now, we will upload the Debug APK which is directly installable, and the unsigned Release APK.
+
+      - name: Rename APKs with Version Numbers
+        run: |
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/ServerBox_SSH_v${{ steps.prep_version.outputs.version_name }}_debug.apk
+          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/ServerBox_SSH_v${{ steps.prep_version.outputs.version_name }}_release_unsigned.apk
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ServerBox-SSH-Debug-APK
+          path: app/build/outputs/apk/debug/ServerBox_SSH_v${{ steps.prep_version.outputs.version_name }}_debug.apk
+
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        with:
+          tag_name: v${{ steps.prep_version.outputs.version_name }}
+          name: ServerBox SSH v${{ steps.prep_version.outputs.version_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Automated Release - ServerBox SSH v${{ steps.prep_version.outputs.version_name }}
+            
+            This release was automatically generated and built by GitHub Actions.
+            
+            ### Changelog
+            - Automated native APK build for version `v${{ steps.prep_version.outputs.version_name }}` (Build code: `${{ steps.prep_version.outputs.version_code }}`)
+            - Added live Linux server system monitoring (CPU delta calculation, RAM parsing, Disk mount lookup, Network Tx/Rx rate).
+            - Added terminal shell console with on-screen keyboard helpers.
+            - Added SFTP remote file explorer with bottom-sheet configuration viewer.
+            - Fixed Android internet permissions and compiled on modern Jetpack Compose.
+            
+            ### Assets Attached
+            - **Debug APK**: Direct installer for testing on mobile device.
+            - **Release APK**: Production-optimized (unsigned).
+          files: |
+            app/build/outputs/apk/debug/ServerBox_SSH_v${{ steps.prep_version.outputs.version_name }}_debug.apk
+            app/build/outputs/apk/release/ServerBox_SSH_v${{ steps.prep_version.outputs.version_name }}_release_unsigned.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,6 @@
+{
+  "name": "ServerBox SSH",
+  "description": "An optimized, native SSH client and server performance monitor for Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
