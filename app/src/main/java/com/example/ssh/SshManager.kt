@@ -229,6 +229,20 @@ object SshManager {
             channel.disconnect()
         }
     }
+
+    /**
+     * SFTP Rename File/Directory
+     */
+    suspend fun renameFile(server: Server, oldPath: String, newPath: String) = withContext(Dispatchers.IO) {
+        val session = getOrCreateSession(server)
+        val channel = session.openChannel("sftp") as ChannelSftp
+        channel.connect(10000)
+        try {
+            channel.rename(oldPath, newPath)
+        } finally {
+            channel.disconnect()
+        }
+    }
 }
 
 /**

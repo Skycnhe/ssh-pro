@@ -51,6 +51,13 @@ fun SftpScreen(
     var isEditingFile by remember { mutableStateOf(false) }
     var editingFileText by remember { mutableStateOf("") }
 
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var fileToRename by remember { mutableStateOf<SftpFile?>(null) }
+    var renameNewName by remember { mutableStateOf("") }
+
+    var showDetailsDialog by remember { mutableStateOf(false) }
+    var fileToShowDetails by remember { mutableStateOf<SftpFile?>(null) }
+
     val scope = rememberCoroutineScope()
 
     // Load initial directory listing
@@ -215,6 +222,15 @@ fun SftpScreen(
                             },
                             onDelete = {
                                 viewModel.deleteSftpFile(file.fullPath, file.isDirectory)
+                            },
+                            onRename = {
+                                fileToRename = file
+                                renameNewName = file.name
+                                showRenameDialog = true
+                            },
+                            onDetails = {
+                                fileToShowDetails = file
+                                showDetailsDialog = true
                             }
                         )
                     }
@@ -394,6 +410,85 @@ fun SftpScreen(
                 }
             }
         }
+
+        if (showRenameDialog && fileToRename != null) {
+            AlertDialog(
+                onDismissRequest = { showRenameDialog = false },
+                title = { Text(strings.renameFile) },
+                text = {
+                    OutlinedTextField(
+                        value = renameNewName,
+                        onValueChange = { renameNewName = it },
+                        label = { Text(strings.newName) },
+                        modifier = Modifier.fillMaxWidth().testTag("rename_input"),
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (renameNewName.isNotEmpty()) {
+                                viewModel.renameSftpFile(fileToRename!!.fullPath, renameNewName)
+                                showRenameDialog = false
+                            }
+                        },
+                        enabled = renameNewName.isNotEmpty()
+                    ) {
+                        Text(strings.save)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRenameDialog = false }) {
+                        Text(strings.cancel)
+                    }
+                }
+            )
+        }
+
+        if (showDetailsDialog && fileToShowDetails != null) {
+            val file = fileToShowDetails!!
+            AlertDialog(
+                onDismissRequest = { showDetailsDialog = false },
+                title = { Text(strings.fileDetails) },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column {
+                            Text(strings.fileName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Text(file.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Column {
+                            Text(strings.fullPath, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Text(file.fullPath, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(strings.size, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                Text(if (file.isDirectory) strings.directory else formatBytes(file.size), style = MaterialTheme.typography.bodyMedium)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(strings.permissions, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                Text(file.permissions, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                            }
+                        }
+                        Column {
+                            Text(strings.lastModified, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            Text(file.mtime, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = { showDetailsDialog = false }) {
+                        Text(strings.cancel)
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -402,7 +497,9 @@ fun SftpFileItemRow(
     file: SftpFile,
     strings: com.example.ui.AppStrings,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRename: () -> Unit,
+    onDetails: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -455,6 +552,26 @@ fun SftpFileItemRow(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(strings.fileDetails) },
+                        onClick = {
+                            showMenu = false
+                            onDetails()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Info, contentDescription = "Details", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(strings.rename) },
+                        onClick = {
+                            showMenu = false
+                            onRename()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = "Rename", tint = MaterialTheme.colorScheme.secondary)
+                        }
+                    )
                     DropdownMenuItem(
                         text = { Text(strings.delete) },
                         onClick = {

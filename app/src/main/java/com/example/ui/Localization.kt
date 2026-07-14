@@ -83,6 +83,16 @@ interface AppStrings {
     val createFile: String
     val fileName: String
     val fileContent: String
+    val rename: String
+    val renameFile: String
+    val newName: String
+    val fileDetails: String
+    val fullPath: String
+    val lastModified: String
+    val killProcess: String
+    val killProcessConfirm: String
+    val killSuccess: String
+    val killFailed: String
     
     // Settings
     val settings: String
@@ -168,6 +178,16 @@ object EnStrings : AppStrings {
     override val createFile = "Create File"
     override val fileName = "File Name"
     override val fileContent = "File Content"
+    override val rename = "Rename"
+    override val renameFile = "Rename File / Folder"
+    override val newName = "New Name"
+    override val fileDetails = "File Details"
+    override val fullPath = "Full Path"
+    override val lastModified = "Last Modified"
+    override val killProcess = "Kill Process"
+    override val killProcessConfirm = "Are you sure you want to terminate process %s (PID: %s)?"
+    override val killSuccess = "Process terminated successfully."
+    override val killFailed = "Failed to terminate process: "
     
     // Settings
     override val settings = "Settings"
@@ -253,6 +273,16 @@ object ZhStrings : AppStrings {
     override val createFile = "新建文件"
     override val fileName = "文件名称"
     override val fileContent = "文件内容"
+    override val rename = "重命名"
+    override val renameFile = "重命名文件/文件夹"
+    override val newName = "新名称"
+    override val fileDetails = "文件属性"
+    override val fullPath = "完整路径"
+    override val lastModified = "修改时间"
+    override val killProcess = "结束进程"
+    override val killProcessConfirm = "您确定要结束进程 %s (PID: %s) 吗？"
+    override val killSuccess = "进程已成功结束。"
+    override val killFailed = "结束进程失败: "
     
     // Settings
     override val settings = "系统设置"

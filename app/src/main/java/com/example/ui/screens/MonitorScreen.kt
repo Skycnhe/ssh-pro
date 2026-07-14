@@ -23,6 +23,7 @@ import com.example.ui.ServerViewModel
 import com.example.ui.getStrings
 import com.example.ssh.ProcessInfo
 import com.example.ssh.ServerPerformanceMetrics
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,10 @@ fun MonitorScreen(
     var processSearchQuery by remember { mutableStateOf("") }
     var sortByCpu by remember { mutableStateOf(true) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var processToKill by remember { mutableStateOf<ProcessInfo?>(null) }
+
     // Control polling lifecycle with Composable effect
     DisposableEffect(Unit) {
         viewModel.startMonitoring()
@@ -51,6 +56,7 @@ fun MonitorScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -280,10 +286,44 @@ fun MonitorScreen(
 
                 // Top Processes List
                 items(filteredProcesses) { proc ->
-                    ProcessItemRow(proc)
+                    ProcessItemRow(proc, onKillClick = { processToKill = proc })
                 }
             }
         }
+    }
+
+    if (processToKill != null) {
+        val proc = processToKill!!
+        AlertDialog(
+            onDismissRequest = { processToKill = null },
+            title = { Text(strings.killProcess) },
+            text = { Text(String.format(strings.killProcessConfirm, proc.command, proc.pid)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val commandName = proc.command
+                        viewModel.killProcess(proc.pid, commandName) { success, msg ->
+                            scope.launch {
+                                if (success) {
+                                    snackbarHostState.showSnackbar(strings.killSuccess)
+                                } else {
+                                    snackbarHostState.showSnackbar("${strings.killFailed}$msg")
+                                }
+                            }
+                        }
+                        processToKill = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(strings.delete)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { processToKill = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
     }
 }
 
@@ -521,7 +561,7 @@ fun NetworkSpeedCard(metrics: ServerPerformanceMetrics, strings: com.example.ui.
 }
 
 @Composable
-fun ProcessItemRow(proc: ProcessInfo) {
+fun ProcessItemRow(proc: ProcessInfo, onKillClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -546,7 +586,10 @@ fun ProcessItemRow(proc: ProcessInfo) {
                     color = MaterialTheme.colorScheme.outline
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text("CPU", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     Text(
@@ -562,6 +605,17 @@ fun ProcessItemRow(proc: ProcessInfo) {
                         String.format(Locale.getDefault(), "%.1f%%", proc.memPercentage),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
+                    )
+                }
+                IconButton(
+                    onClick = onKillClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Kill Process",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

@@ -211,6 +211,31 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         monitorJob = null
     }
 
+    fun killProcess(pid: String, commandName: String, onResult: (Boolean, String) -> Unit) {
+        val server = _selectedServer.value ?: return
+        viewModelScope.launch {
+            try {
+                val output = SshManager.executeCommand(server, "kill -9 $pid")
+                // Check if there was an error output
+                if (output.lowercase().contains("error") || output.lowercase().contains("not permitted") || output.lowercase().contains("no such process")) {
+                    onResult(false, output)
+                } else {
+                    onResult(true, "Process $commandName ($pid) terminated.")
+                    // Refresh metrics soon
+                    delay(800)
+                    try {
+                        val metrics = ServerMonitor.fetchMetrics(server, _currentMetrics.value)
+                        _currentMetrics.value = metrics
+                    } catch (e: Exception) {
+                        // ignore refresh failures
+                    }
+                }
+            } catch (e: Exception) {
+                onResult(false, e.localizedMessage ?: e.toString())
+            }
+        }
+    }
+
     // --- SFTP ACTIONS ---
     fun loadSftpDirectory(path: String) {
         val server = _selectedServer.value ?: return
@@ -265,6 +290,21 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 loadSftpDirectory(_currentSftpPath.value) // Refresh
             } catch (e: Exception) {
                 _sftpError.value = "Upload failed: ${e.localizedMessage ?: e.toString()}"
+            }
+        }
+    }
+
+    fun renameSftpFile(oldPath: String, newName: String) {
+        val server = _selectedServer.value ?: return
+        val lastSlash = oldPath.lastIndexOf('/')
+        val parent = if (lastSlash >= 0) oldPath.substring(0, lastSlash + 1) else ""
+        val newPath = "$parent$newName"
+        viewModelScope.launch {
+            try {
+                SshManager.renameFile(server, oldPath, newPath)
+                loadSftpDirectory(_currentSftpPath.value) // Refresh
+            } catch (e: Exception) {
+                _sftpError.value = "Rename failed: ${e.localizedMessage ?: e.toString()}"
             }
         }
     }

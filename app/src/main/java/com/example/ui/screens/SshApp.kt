@@ -1,7 +1,7 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PieChart
@@ -69,25 +69,31 @@ fun SshApp(
             },
             modifier = modifier
         ) { innerPadding ->
-            // Display the appropriate screen inside the workspace
-            when (activeTab) {
-                ServerTab.DASHBOARD -> {
-                    MonitorScreen(
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                ServerTab.TERMINAL -> {
-                    TerminalScreen(
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-                ServerTab.SFTP -> {
-                    SftpScreen(
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                // Display the appropriate screen inside the workspace
+                when (activeTab) {
+                    ServerTab.DASHBOARD -> {
+                        MonitorScreen(
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    ServerTab.TERMINAL -> {
+                        TerminalScreen(
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    ServerTab.SFTP -> {
+                        SftpScreen(
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
