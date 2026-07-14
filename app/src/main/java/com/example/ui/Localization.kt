@@ -80,6 +80,9 @@ interface AppStrings {
     val fileViewer: String
     val directory: String
     val delete: String
+    val createFile: String
+    val fileName: String
+    val fileContent: String
     
     // Settings
     val settings: String
@@ -162,6 +165,9 @@ object EnStrings : AppStrings {
     override val fileViewer = "File Viewer"
     override val directory = "Directory"
     override val delete = "Delete"
+    override val createFile = "Create File"
+    override val fileName = "File Name"
+    override val fileContent = "File Content"
     
     // Settings
     override val settings = "Settings"
@@ -244,6 +250,9 @@ object ZhStrings : AppStrings {
     override val fileViewer = "文件查看器"
     override val directory = "目录"
     override val delete = "删除"
+    override val createFile = "新建文件"
+    override val fileName = "文件名称"
+    override val fileContent = "文件内容"
     
     // Settings
     override val settings = "系统设置"

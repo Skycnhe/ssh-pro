@@ -176,22 +176,29 @@ fun TerminalScreen(
             }
 
             // 2. Quick Standard Controls Helper Row (Ctrl+C, Tab, Esc etc.)
-            Row(
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF1E1E1E))
                     .padding(vertical = 6.dp, horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
                 val shortcutKeys = listOf(
                     "Tab" to "\t",
                     "Ctrl+C" to "\u0003",
+                    "Ctrl+D" to "\u0004",
                     "Esc" to "\u001b",
+                    "▲" to "\u001b[A",
+                    "▼" to "\u001b[B",
+                    "◀" to "\u001b[D",
+                    "▶" to "\u001b[C",
                     "Clear" to "clear\n",
                     "|" to "|",
-                    "/" to "/"
+                    "/" to "/",
+                    "-" to "-"
                 )
-                shortcutKeys.forEach { (label, command) ->
+                items(shortcutKeys) { (label, command) ->
                     Button(
                         onClick = { 
                             viewModel.sendTerminalInput(command)

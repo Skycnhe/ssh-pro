@@ -41,9 +41,15 @@ fun SftpScreen(
     var showCreateDirDialog by remember { mutableStateOf(false) }
     var newDirName by remember { mutableStateOf("") }
 
+    var showCreateFileDialog by remember { mutableStateOf(false) }
+    var newFileName by remember { mutableStateOf("") }
+    var newFileContent by remember { mutableStateOf("") }
+
     var selectedFileToView by remember { mutableStateOf<SftpFile?>(null) }
     var fileViewContent by remember { mutableStateOf<String?>(null) }
     var isFileLoading by remember { mutableStateOf(false) }
+    var isEditingFile by remember { mutableStateOf(false) }
+    var editingFileText by remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
 
@@ -64,6 +70,13 @@ fun SftpScreen(
                 actions = {
                     IconButton(onClick = { showCreateDirDialog = true }) {
                         Icon(Icons.Default.CreateNewFolder, contentDescription = strings.createFolder)
+                    }
+                    IconButton(onClick = { 
+                        newFileName = ""
+                        newFileContent = ""
+                        showCreateFileDialog = true 
+                    }) {
+                        Icon(Icons.Default.NoteAdd, contentDescription = strings.createFile)
                     }
                     IconButton(onClick = { viewModel.loadSftpDirectory(currentPath) }) {
                         Icon(Icons.Default.Refresh, contentDescription = strings.reconnect)
@@ -183,12 +196,16 @@ fun SftpScreen(
                                         selectedFileToView = file
                                         isFileLoading = true
                                         fileViewContent = null
+                                        isEditingFile = false
+                                        editingFileText = ""
                                         scope.launch {
                                             try {
                                                 val content = com.example.ssh.SshManager.readFileContent(server!!, file.fullPath)
                                                 fileViewContent = content
+                                                editingFileText = content
                                             } catch (e: Exception) {
                                                 fileViewContent = "Error reading file content:\n${e.localizedMessage ?: e.toString()}"
+                                                editingFileText = fileViewContent ?: ""
                                             } finally {
                                                 isFileLoading = false
                                             }
@@ -241,12 +258,58 @@ fun SftpScreen(
             )
         }
 
+        // Create File Dialog
+        if (showCreateFileDialog) {
+            AlertDialog(
+                onDismissRequest = { showCreateFileDialog = false },
+                title = { Text(strings.createFile) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = newFileName,
+                            onValueChange = { newFileName = it },
+                            label = { Text(strings.fileName) },
+                            modifier = Modifier.fillMaxWidth().testTag("form_file_name"),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = newFileContent,
+                            onValueChange = { newFileContent = it },
+                            label = { Text(strings.fileContent) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = FontFamily.Monospace)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (newFileName.isNotEmpty()) {
+                                viewModel.uploadSftpFile(newFileName, newFileContent)
+                                newFileName = ""
+                                newFileContent = ""
+                                showCreateFileDialog = false
+                            }
+                        },
+                        enabled = newFileName.isNotEmpty()
+                    ) {
+                        Text(strings.create)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCreateFileDialog = false }) {
+                        Text(strings.cancel)
+                    }
+                }
+            )
+        }
+
         // File Viewer Bottom Sheet
         if (selectedFileToView != null) {
             val file = selectedFileToView!!
             ModalBottomSheet(
                 onDismissRequest = { selectedFileToView = null },
-                modifier = Modifier.fillMaxHeight(0.8f)
+                modifier = Modifier.fillMaxHeight(0.85f)
             ) {
                 Column(
                     modifier = Modifier
@@ -263,6 +326,23 @@ fun SftpScreen(
                             Text(file.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(formatBytes(file.size), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                         }
+                        
+                        if (!isFileLoading && fileViewContent != null && !fileViewContent!!.startsWith("Error reading file content:")) {
+                            if (isEditingFile) {
+                                IconButton(onClick = {
+                                    viewModel.uploadSftpFile(file.name, editingFileText)
+                                    isEditingFile = false
+                                    selectedFileToView = null // Close editor after save
+                                }) {
+                                    Icon(Icons.Default.Save, contentDescription = "Save", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            } else {
+                                IconButton(onClick = { isEditingFile = true }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                }
+                            }
+                        }
+                        
                         IconButton(onClick = { selectedFileToView = null }) {
                             Icon(Icons.Default.Close, contentDescription = "Close")
                         }
@@ -279,17 +359,34 @@ fun SftpScreen(
                                 .weight(1f)
                                 .fillMaxWidth()
                         ) {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                item {
-                                    Text(
-                                        text = fileViewContent ?: "No content",
-                                        style = androidx.compose.ui.text.TextStyle(
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 12.sp,
-                                            lineHeight = 16.sp
-                                        ),
-                                        modifier = Modifier.padding(8.dp)
+                            if (isEditingFile) {
+                                OutlinedTextField(
+                                    value = editingFileText,
+                                    onValueChange = { editingFileText = it },
+                                    modifier = Modifier.fillMaxSize(),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp
+                                    ),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                                     )
+                                )
+                            } else {
+                                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                    item {
+                                        Text(
+                                            text = fileViewContent ?: "No content",
+                                            style = androidx.compose.ui.text.TextStyle(
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 12.sp,
+                                                lineHeight = 16.sp
+                                            ),
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

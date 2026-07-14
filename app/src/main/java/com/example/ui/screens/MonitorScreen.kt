@@ -39,6 +39,9 @@ fun MonitorScreen(
     val appLanguage by viewModel.appLanguage.collectAsState()
     val strings = getStrings(appLanguage)
 
+    var processSearchQuery by remember { mutableStateOf("") }
+    var sortByCpu by remember { mutableStateOf(true) }
+
     // Control polling lifecycle with Composable effect
     DisposableEffect(Unit) {
         viewModel.startMonitoring()
@@ -145,6 +148,21 @@ fun MonitorScreen(
             }
         } else {
             val validMetrics = metrics!!
+            val filteredProcesses = remember(validMetrics.processes, processSearchQuery, sortByCpu) {
+                val filtered = if (processSearchQuery.isEmpty()) {
+                    validMetrics.processes
+                } else {
+                    validMetrics.processes.filter {
+                        it.command.contains(processSearchQuery, ignoreCase = true) ||
+                                it.pid.contains(processSearchQuery)
+                    }
+                }
+                if (sortByCpu) {
+                    filtered.sortedByDescending { it.cpuPercentage }
+                } else {
+                    filtered.sortedByDescending { it.memPercentage }
+                }
+            }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -206,16 +224,62 @@ fun MonitorScreen(
 
                 // Top Processes Header
                 item {
-                    Text(
-                        strings.activeProcesses,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                strings.activeProcesses,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FilterChip(
+                                    selected = sortByCpu,
+                                    onClick = { sortByCpu = true },
+                                    label = { Text("CPU %") }
+                                )
+                                FilterChip(
+                                    selected = !sortByCpu,
+                                    onClick = { sortByCpu = false },
+                                    label = { Text("MEM %") }
+                                )
+                            }
+                        }
+                        
+                        OutlinedTextField(
+                            value = processSearchQuery,
+                            onValueChange = { processSearchQuery = it },
+                            placeholder = { Text("Search processes...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (processSearchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { processSearchQuery = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+                            )
+                        )
+                    }
                 }
 
                 // Top Processes List
-                items(validMetrics.processes) { proc ->
+                items(filteredProcesses) { proc ->
                     ProcessItemRow(proc)
                 }
             }
