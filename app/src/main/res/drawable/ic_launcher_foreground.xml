@@ -1,27 +1,8 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    
-    <!-- Outer monitor/terminal window outline -->
-    <path
-        android:fillColor="#3B82F6"
-        android:pathData="M 24,24 L 84,24 C 88.4,24 92,27.6 92,32 L 92,76 C 92,80.4 88.4,84 84,84 L 24,84 C 19.6,84 16,80.4 16,76 L 16,32 C 16,27.6 19.6,24 24,24 Z" />
-    
-    <!-- Inner terminal window screen (dark background) -->
-    <path
-        android:fillColor="#1E293B"
-        android:pathData="M 26,30 L 82,30 C 83.1,30 84,30.9 84,32 L 84,74 C 84,75.1 83.1,76 82,76 L 26,76 C 24.9,76 24,75.1 24,74 L 24,32 C 24,30.9 24.9,30 26,30 Z" />
-        
-    <!-- Command Prompt Chevron: ">" -->
-    <path
-        android:fillColor="#10B981"
-        android:pathData="M 34,42 L 44,48 L 34,54 L 34,50 L 40,48 L 34,46 Z" />
-        
-    <!-- Underline cursor: "_" -->
-    <path
-        android:fillColor="#F59E0B"
-        android:pathData="M 46,52 L 56,52 L 56,54 L 46,54 Z" />
-        
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="66dp"
+        android:height="66dp"
+        android:drawable="@drawable/img_flux_logo"
+        android:gravity="center" />
+</layer-list>

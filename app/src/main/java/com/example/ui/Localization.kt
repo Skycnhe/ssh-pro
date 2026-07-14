@@ -105,10 +105,16 @@ interface AppStrings {
     val languageChinese: String
     val languageSystem: String
     val shortcutManager: String
+    val backupRestore: String
+    val backupDesc: String
+    val backupBtn: String
+    val restoreBtn: String
+    val backupSuccess: String
+    val backupFailed: String
 }
 
 object EnStrings : AppStrings {
-    override val appName = "ServerBox SSH"
+    override val appName = "Flux"
     override val addServer = "Add Server"
     override val editServer = "Edit Server"
     override val deleteServer = "Delete Server"
@@ -200,10 +206,16 @@ object EnStrings : AppStrings {
     override val languageChinese = "简体中文"
     override val languageSystem = "Follow System"
     override val shortcutManager = "Shortcut Commands Manager"
+    override val backupRestore = "Backup & Restore"
+    override val backupDesc = "Export your servers and shortcut commands to a local JSON backup file, or import them back to this device."
+    override val backupBtn = "Export Backup"
+    override val restoreBtn = "Import Backup"
+    override val backupSuccess = "Backup exported successfully"
+    override val backupFailed = "Backup failed"
 }
 
 object ZhStrings : AppStrings {
-    override val appName = "ServerBox SSH"
+    override val appName = "Flux"
     override val addServer = "添加服务器"
     override val editServer = "编辑服务器"
     override val deleteServer = "删除服务器"
@@ -295,6 +307,12 @@ object ZhStrings : AppStrings {
     override val languageChinese = "简体中文"
     override val languageSystem = "跟随系统"
     override val shortcutManager = "快捷命令管理"
+    override val backupRestore = "备份与恢复"
+    override val backupDesc = "将您的服务器和快捷命令导出为本地 JSON 备份文件，或者从此设备导入进行数据恢复。"
+    override val backupBtn = "导出备份"
+    override val restoreBtn = "导入恢复"
+    override val backupSuccess = "备份成功导出"
+    override val backupFailed = "备份失败"
 }
 
 @Composable

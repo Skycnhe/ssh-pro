@@ -392,6 +392,112 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         return text.replace(Regex("\u001B\\[[;\\d]*[A-Za-z]"), "")
     }
 
+    fun exportBackup(uri: android.net.Uri, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val servers = allServers.value
+                val shortcuts = allShortcuts.value
+
+                val rootJson = org.json.JSONObject().apply {
+                    put("version", 1)
+                    put("backupTime", System.currentTimeMillis())
+
+                    val serversArray = org.json.JSONArray()
+                    for (server in servers) {
+                        val serverJson = org.json.JSONObject().apply {
+                            put("name", server.name)
+                            put("host", server.host)
+                            put("port", server.port)
+                            put("username", server.username)
+                            put("authType", server.authType)
+                            put("password", server.password ?: org.json.JSONObject.NULL)
+                            put("privateKey", server.privateKey ?: org.json.JSONObject.NULL)
+                            put("passphrase", server.passphrase ?: org.json.JSONObject.NULL)
+                        }
+                        serversArray.put(serverJson)
+                    }
+                    put("servers", serversArray)
+
+                    val shortcutsArray = org.json.JSONArray()
+                    for (shortcut in shortcuts) {
+                        val shortcutJson = org.json.JSONObject().apply {
+                            put("name", shortcut.name)
+                            put("command", shortcut.command)
+                        }
+                        shortcutsArray.put(shortcutJson)
+                    }
+                    put("shortcuts", shortcutsArray)
+                }
+
+                withContext(Dispatchers.IO) {
+                    val contentResolver = getApplication<Application>().contentResolver
+                    contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        outputStream.write(rootJson.toString(4).toByteArray(Charsets.UTF_8))
+                    } ?: throw java.io.IOException("Failed to open output stream")
+                }
+                onSuccess()
+            } catch (e: Exception) {
+                onError(e.localizedMessage ?: e.toString())
+            }
+        }
+    }
+
+    fun importBackup(uri: android.net.Uri, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val jsonString = withContext(Dispatchers.IO) {
+                    val contentResolver = getApplication<Application>().contentResolver
+                    contentResolver.openInputStream(uri)?.use { inputStream ->
+                        inputStream.bufferedReader(Charsets.UTF_8).readText()
+                    } ?: throw java.io.IOException("Failed to open input stream")
+                }
+
+                val rootJson = org.json.JSONObject(jsonString)
+                val serversArray = rootJson.optJSONArray("servers")
+                val shortcutsArray = rootJson.optJSONArray("shortcuts")
+
+                var importedServers = 0
+                var importedShortcuts = 0
+
+                if (serversArray != null) {
+                    for (i in 0 until serversArray.length()) {
+                        val sJson = serversArray.getJSONObject(i)
+                        val server = Server(
+                            name = sJson.getString("name"),
+                            host = sJson.getString("host"),
+                            port = sJson.optInt("port", 22),
+                            username = sJson.getString("username"),
+                            authType = sJson.optString("authType", "PASSWORD"),
+                            password = if (sJson.isNull("password")) null else sJson.getString("password"),
+                            privateKey = if (sJson.isNull("privateKey")) null else sJson.getString("privateKey"),
+                            passphrase = if (sJson.isNull("passphrase")) null else sJson.getString("passphrase")
+                        )
+                        repository.insertServer(server)
+                        importedServers++
+                    }
+                }
+
+                if (shortcutsArray != null) {
+                    for (i in 0 until shortcutsArray.length()) {
+                        val sJson = shortcutsArray.getJSONObject(i)
+                        val name = sJson.getString("name")
+                        val command = sJson.getString("command")
+                        
+                        val exists = allShortcuts.value.any { it.name == name && it.command == command }
+                        if (!exists) {
+                            repository.insertShortcut(com.example.data.model.ShortcutCommand(name = name, command = command))
+                            importedShortcuts++
+                        }
+                    }
+                }
+
+                onSuccess("Imported $importedServers servers and $importedShortcuts shortcuts.")
+            } catch (e: Exception) {
+                onError("Import failed: ${e.localizedMessage ?: e.toString()}")
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         stopMonitoring()

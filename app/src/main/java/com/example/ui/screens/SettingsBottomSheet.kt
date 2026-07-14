@@ -11,6 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +34,42 @@ fun SettingsBottomSheet(
     val appTheme by viewModel.appTheme.collectAsState()
     val shortcuts by viewModel.allShortcuts.collectAsState()
     val strings = getStrings(appLanguage)
+
+    val context = LocalContext.current
+
+    // Setup Export Launcher
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportBackup(
+                uri = uri,
+                onSuccess = {
+                    android.widget.Toast.makeText(context, strings.backupSuccess, android.widget.Toast.LENGTH_SHORT).show()
+                },
+                onError = { err ->
+                    android.widget.Toast.makeText(context, "${strings.backupFailed}: $err", android.widget.Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
+
+    // Setup Import Launcher
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importBackup(
+                uri = uri,
+                onSuccess = { msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                },
+                onError = { err ->
+                    android.widget.Toast.makeText(context, err, android.widget.Toast.LENGTH_LONG).show()
+                }
+            )
+        }
+    }
 
     var newShortcutName by remember { mutableStateOf("") }
     var newShortcutCommand by remember { mutableStateOf("") }
@@ -133,6 +172,69 @@ fun SettingsBottomSheet(
                                     label = { Text(label, fontSize = 13.sp) },
                                     modifier = Modifier.weight(1f)
                                 )
+                            }
+                        }
+                    }
+                }
+
+                // 2.5. Backup & Restore
+                item {
+                    Column {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = strings.backupRestore,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = strings.backupDesc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    exportLauncher.launch("flux_backup_${System.currentTimeMillis() / 1000}.json")
+                                },
+                                modifier = Modifier.weight(1f).testTag("export_backup_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(strings.backupBtn, fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    importLauncher.launch("application/json")
+                                },
+                                modifier = Modifier.weight(1f).testTag("import_backup_button"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowUpward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(strings.restoreBtn, fontSize = 13.sp)
                             }
                         }
                     }

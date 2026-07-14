@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "ServerBox SSH"
+rootProject.name = "Flux"
 
 include(":app")
